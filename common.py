@@ -8,7 +8,7 @@ import json
 import gdown
 import numpy as np
 
-def download_files(url="https://drive.google.com/drive/folders/1_KJEMi3IpViEHoAY_suEBlC1C2MRvEzm"):
+def download_files(url="https://drive.google.com/drive/folders/1dcfQWXHcu0tAvUd3ngIBs4qwKyfiInaF"):
     gdown.download_folder(url, quiet=False, use_cookies=False)
 
 def load_data(passages_file='passages.json',
