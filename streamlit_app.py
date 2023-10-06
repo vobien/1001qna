@@ -76,7 +76,7 @@ def run(model_names, model_mapping, top_k=10):
     comment = st.text_area('Bạn có thể test thử model bằng cách nhập câu hỏi vào ô bên dưới')
     input_text.append(comment)
 
-    is_ranking = st.checkbox("Ranking lại kết quả tìm kiếm")
+    # is_ranking = st.checkbox("Ranking lại kết quả tìm kiếm")
 
     if st.button('Tìm kiếm'):
         with st.spinner('Searching ......'):
@@ -98,16 +98,16 @@ def run(model_names, model_mapping, top_k=10):
                     hits = [{"corpus_id": id} for id in ids]
                     results = [passages[i] for i in ids]
 
-                    if is_ranking:
-                        results, _ = ranking(hits, query, passages, top_k=top_k)
+                    # if is_ranking:
+                        # results, _ = ranking(hits, query, passages, top_k=top_k)
                 else:
                     print("Search answers with model ", ranker)
                     model = model_mapping[ranker]["model"]
                     corpus = model_mapping[ranker]["corpus"]
                     results, hits = search(model, corpus, query, passages, top_k=top_k)
                     
-                    if is_ranking:
-                        results, _ = ranking(hits, query, passages, top_k=top_k)
+                    # if is_ranking:
+                    #     results, _ = ranking(hits, query, passages, top_k=top_k)
 
                 for result in results:
                     st.success(f"{str(result)}")
