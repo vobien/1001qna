@@ -33,7 +33,7 @@ def get_md5(input):
     return md5_hash.hexdigest()
 
 
-def run(model_names, model_mapping, top_k=10):
+def run(model_names, model_mapping, passages, top_k=10):
     st.title('Demo Q&A')
     rankers = model_names[:]
     ranker = st.sidebar.radio('Loại mô hình ngôn ngữ', rankers, index=0)
@@ -60,14 +60,11 @@ def run(model_names, model_mapping, top_k=10):
         new_passages.append([question, answers[0]])
     
     if len(answers) > 1:
-        dataset.append([question, answers[1], 0.97])
+        dataset.append([question, answers[1], 0.98])
         new_passages.append([question, answers[1]])
     
-    print("dataset: ", dataset)
-
-    if question != "" or len(answers) > 0:
+    if question.strip() != "" and len(answers) > 0:
         if st.button('Training'):
-            print("->", question, answers)
             print("Trigger training model ", ranker)
             with st.spinner('Training ......'):
                 if ranker in model_names:
@@ -99,8 +96,6 @@ def run(model_names, model_mapping, top_k=10):
                 model = model_mapping[ranker]["model"]
                 corpus = model_mapping[ranker]["corpus"]
                 results, hits = search(model, corpus, query, passages, top_k=top_k)
-    
-                print(hits)
 
                 # update statistic
                 st.session_state.statistic = {
@@ -158,4 +153,4 @@ if __name__ == '__main__':
     download_data()
     passages = load_input_data()
     model_mapping = load_model_and_corpus(passages, model_names)
-    run(model_names, model_mapping, top_k=10)
+    run(model_names, model_mapping, passages, top_k=10)
