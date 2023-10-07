@@ -74,7 +74,7 @@ def run(model_names, model_mapping, top_k=10):
                     model = model_mapping[ranker]["model"]
 
                     # train model on new data
-                    model = train(model, ranker, dataset)
+                    model = train(model, ranker, dataset, epochs=30)
 
                     # append new passages into the existing passages
                     passages.extend(new_passages)
