@@ -74,7 +74,7 @@ def run(model_names, model_mapping, top_k=10):
                     model = model_mapping[ranker]["model"]
 
                     # train model on new data
-                    model = train(model, ranker, dataset, epochs=1, warmup_steps=1)
+                    model = train(model, ranker, dataset)
 
                     # append new passages into the existing passages
                     passages.extend(new_passages)
@@ -100,6 +100,8 @@ def run(model_names, model_mapping, top_k=10):
                 corpus = model_mapping[ranker]["corpus"]
                 results, hits = search(model, corpus, query, passages, top_k=top_k)
     
+                print(hits)
+
                 # update statistic
                 st.session_state.statistic = {
                     query_md5: {
@@ -147,8 +149,8 @@ def run(model_names, model_mapping, top_k=10):
 
 if __name__ == '__main__':
     model_names = [
-        "keepitreal/vietnamese-sbert",
-        # "sentence-transformers/all-MiniLM-L12-v2",
+        # "keepitreal/vietnamese-sbert",
+        "sentence-transformers/all-MiniLM-L12-v2",
         # "sentence-transformers/multi-qa-mpnet-base-cos-v1",
         # "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     ]
