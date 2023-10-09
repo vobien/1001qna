@@ -159,7 +159,7 @@ if __name__ == '__main__':
         # "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     ]
 
-    # download_data()
+    download_data()
     passages = load_input_data()
     model_mapping = load_model_and_corpus(passages, model_names)
     run(model_names, model_mapping, passages, top_k=10)
