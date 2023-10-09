@@ -3,8 +3,10 @@ import hashlib
 
 from common import load_data, save_data, load_model, load_corpus_embedding, append_new_corpus, load_tokenized_data, search, download_files, ranking, train
 
-if 'statistic' not in st.session_state:
-    st.session_state.statistic = None
+# Initialize session state to store result data
+if "results" not in st.session_state:
+    st.session_state.results = {}
+
 
 @st.cache_resource()
 def download_data():
@@ -26,13 +28,41 @@ def load_model_and_corpus(passages, model_names):
         }
     return model_mapping
 
-@st.cache_resource()
-def get_md5(input):
+def get_md5(content):
     md5_hash = hashlib.md5()
-    md5_hash.update(input.encode('utf-8'))
+    md5_hash.update(content.encode('utf-8'))
     return md5_hash.hexdigest()
 
 
+class Result:
+    def __init__(self, id, score, likes=0):
+        self.id = id
+        self.score = score
+        self.likes = likes
+
+# Function to render a result and handle likes/dislikes
+def render_result(result):
+    st.write(f"{passages[result.id][0]} - {passages[result.id][1]}")
+    st.write(f"Likes: {result.likes}")
+
+    col1, col2 = st.columns([0.1, 0.9])
+
+    # Create buttons for liking and disliking
+    like_btn = col1.button("Like", key=f"like-{result.id}")
+    dislike_btn = col2.button("Dislike", key=f"dislike-{result.id}")
+    
+    if like_btn:
+        likes = st.session_state.results[result.id].likes + 1
+        st.session_state.results[result.id] = Result(result.id, result.score, likes)
+        st.rerun()
+
+    if dislike_btn:
+        likes = st.session_state.results[result.id].likes - 1
+        st.session_state.results[result.id] = Result(result.id, result.score, likes)
+        st.rerun()
+
+    
+    
 def run(model_names, model_mapping, passages, top_k=10):
     st.title('Demo Q&A')
     rankers = model_names[:]
@@ -85,62 +115,41 @@ def run(model_names, model_mapping, passages, top_k=10):
                     model_mapping[ranker]["model"] = model
 
     query = st.text_area('Bạn có thể test thử model bằng cách nhập câu hỏi vào ô bên dưới')
-    query_md5 = get_md5(query)
 
     hits = []
     if st.button('Tìm kiếm'):
-        with st.spinner('Searching ......'):
-            if query != '':
+        print("Press Search button, query: ", query)
+        if query != "":
+            query_md5 = get_md5(query)
+            with st.spinner('Searching ......'):
                 print(f'Input: ', query)
                 print("Search answers with model ", ranker)
                 model = model_mapping[ranker]["model"]
                 corpus = model_mapping[ranker]["corpus"]
                 results, hits = search(model, corpus, query, passages, top_k=top_k)
+                print(hits)
 
-                # update statistic
-                st.session_state.statistic = {
-                    query_md5: {
-                        "query": query,
-                        "hits": hits,
-                        "status": None
-                    }
-                }
-                            
-                # collect results ids
-                ids = [hit['corpus_id'] for hit in hits]
+                st.session_state.results = {}
+                for hit in hits:
+                    id = hit["corpus_id"]
+                    score = hit["score"]
+                    st.session_state.results[id] = Result(id, score, likes=0)
+                st.rerun()
 
-                # Display items and like/dislike buttons
-                for id in ids:
-                    st.success(f"{str(passages[id])}")
-                    
-                    # # Create columns for like and dislike buttons
-                    # col1, col2 = st.columns(2)
-                    
-                    # with col1:
-                    #     # Add a like button
-                    #     if col1.button("Like", key=f"like-{id}"):
-                    #         if st.session_state.statistic[query_md5]["status"][id] is None:
-                    #             st.session_state.statistic[query_md5]["status"] = {
-                    #                 id: {
-                    #                     "like": 1
-                    #                 }
-                    #             }
-                    #         else:
-                    #             st.session_state.statistic[query_md5]["status"][id]["like"] += 1
-                        
-                    # with col2:
-                    #     # Add a dislike button
-                    #     if col2.button("Dislike", key=f"dislike-{id}"):
-                    #         if st.session_state.statistic[query_md5]["status"][id] is None:
-                    #             st.session_state.statistic[query_md5]["status"] = {
-                    #                 id: {
-                    #                     "like": -1
-                    #                 }
-                    #             }
-                    #         else:
-                    #             st.session_state.statistic[query_md5]["status"][id]["like"] -= 1
+    if query != "":
+        # result area below Search button
+        for id, result in st.session_state.results.items():
+            render_result(result)
 
-                # print(st.session_state.statistic)      
+        # collect statistic of results
+        if len(st.session_state.results) > 0:
+            new_training_data = []
+            for id, result in st.session_state.results.items():
+                if result.likes != 0:
+                    label = result.score + result.likes * 0.1
+                    ans = f"{passages[result.id][0]},{passages[result.id][1]}"
+                    new_training_data.append([query, ans, label])
+            print("new training data: ", new_training_data)
 
 if __name__ == '__main__':
     model_names = [
@@ -150,7 +159,7 @@ if __name__ == '__main__':
         # "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
     ]
 
-    download_data()
+    # download_data()
     passages = load_input_data()
     model_mapping = load_model_and_corpus(passages, model_names)
     run(model_names, model_mapping, passages, top_k=10)
