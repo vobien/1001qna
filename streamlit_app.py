@@ -73,28 +73,32 @@ def run(model_names, model_mapping, passages, top_k=10):
         + "Bằng việc thu thập feedback (like/dislike) các câu trả lời để re-train lại model nếu cần.")
     st.text('')
 
-    question = st.text_area('Nhập câu hỏi để train model')
-    answers = []
-    ans1 = st.text_area('Câu trả lời 1:')
-    if len(ans1.strip()) > 0:
-        answers.append(ans1.strip())
+    with st.form(key="train_form"):
+        question = st.text_area('Nhập câu hỏi để train model')
+        ans1 = st.text_area('Câu trả lời 1:')
+        ans2 = st.text_area('Câu trả lời 2: (không bắt buộc)')
+        train_button = st.form_submit_button(label="Training")
 
-    ans2 = st.text_area('Câu trả lời 2: (không bắt buộc)')
-    if len(ans2.strip()) > 0:
-        answers.append(ans2.strip())
+    # Check if the Training button was clicked
+    if train_button:
+        # collect answers
+        answers = []
+        if len(ans1.strip()) > 0:
+            answers.append(ans1.strip())
+        if len(ans2.strip()) > 0:
+            answers.append(ans2.strip())
 
-    new_passages = []
-    dataset = []
-    if len(answers) > 0:
-        dataset.append([question, answers[0], 0.99])
-        new_passages.append([question, answers[0]])
-    
-    if len(answers) > 1:
-        dataset.append([question, answers[1], 0.98])
-        new_passages.append([question, answers[1]])
-    
-    if question.strip() != "" and len(answers) > 0:
-        if st.button('Training'):
+        if question.strip() != "" and len(answers) > 0:
+            new_passages = []
+            dataset = []
+            if len(answers) > 0:
+                dataset.append([question, answers[0], 0.99])
+                new_passages.append([question, answers[0]])
+            
+            if len(answers) > 1:
+                dataset.append([question, answers[1], 0.98])
+                new_passages.append([question, answers[1]])
+            
             print("Trigger training model ", ranker)
             with st.spinner('Training ......'):
                 if ranker in model_names:
@@ -114,11 +118,16 @@ def run(model_names, model_mapping, passages, top_k=10):
                     model_mapping[ranker]["corpus"] = new_corpus
                     model_mapping[ranker]["model"] = model
 
-    query = st.text_area('Bạn có thể test thử model bằng cách nhập câu hỏi vào ô bên dưới')
-
-    hits = []
-    if st.button('Tìm kiếm'):
+    with st.form(key="search_form"):
+        query = st.text_area('Bạn có thể test thử model bằng cách nhập câu hỏi vào ô bên dưới')
+        search_button = st.form_submit_button(label="Tìm kiếm")
+    
+    # Check if the Search button was clicked
+    if search_button:
+        hits = []
         print("Press Search button, query: ", query)
+        del st.session_state["results"]
+
         if query != "":
             query_md5 = get_md5(query)
             with st.spinner('Searching ......'):
