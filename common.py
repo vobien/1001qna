@@ -99,6 +99,12 @@ def append_new_corpus(corpus, model, new_passages, model_name, data_folder='data
     save_corpus_embedding(updated_corpus_embeddings, embeddings_filepath)
     return updated_corpus_embeddings
 
+def update_new_corpus(passages, model, model_name, data_folder='data/'):
+    new_embeddings = encode_corpus(model, passages)
+    embeddings_filepath = data_folder + model_name.replace("/", "_") + "-corpus.pt"
+    save_corpus_embedding(new_embeddings, embeddings_filepath)
+    return updated_corpus_embeddings
+
 def save_corpus_embedding(corpus_embeddings, corpus_path):
     torch.save(corpus_embeddings, corpus_path)
     print('Save corpus embedding at ', corpus_path)

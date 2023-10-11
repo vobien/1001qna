@@ -1,7 +1,7 @@
 import streamlit as st
 import hashlib
 
-from common import load_data, save_data, load_model, load_corpus_embedding, append_new_corpus, load_tokenized_data, search, download_files, ranking, train
+from common import load_data, save_data, load_model, load_corpus_embedding, append_new_corpus, update_new_corpus, load_tokenized_data, search, download_files, ranking, train
 
 # Initialize session state to store result data
 if "results" not in st.session_state:
@@ -65,7 +65,31 @@ def render_result(result):
         st.session_state.results[result.id] = Result(result.id, result.score, likes)
         st.rerun()
 
-    
+def training(model_mapping, passages, ranker, dataset, new_passages=[], epochs=30):
+    model = model_mapping[ranker]["model"]
+
+    # train model on new data
+    model = train(model, ranker, dataset, epochs=epochs)
+
+    # if having new passages, append them in existing passages
+    # and append embedding vectors to corpus
+    # otherwise, just re-calculate the whole corpus with the new trained model
+    if len(new_passages) > 0:
+        print("Append new passages and append new embedding vectors")
+        # append new passages into the existing passages
+        passages.extend(new_passages)
+        save_data(passages)
+
+        # encode corpus embedding for the whole passages
+        new_corpus = append_new_corpus(model_mapping[ranker]["corpus"], model, new_passages, ranker)
+    else:
+        print("Re-calculate the corpus embedding with the trained model")
+        new_corpus = update_new_corpus(passages, model, ranker)
+
+    # update new model & corpus for this model_name
+    model_mapping[ranker]["corpus"] = new_corpus
+    model_mapping[ranker]["model"] = model
+
     
 def run(model_names, model_mapping, passages, top_k=10):
     st.title('Demo Q&A')
@@ -106,26 +130,21 @@ def run(model_names, model_mapping, passages, top_k=10):
             print("Trigger training model ", ranker)
             with st.spinner('Training ......'):
                 if ranker in model_names:
-                    model = model_mapping[ranker]["model"]
-
-                    # train model on new data
-                    model = train(model, ranker, dataset, epochs=30)
-
-                    # append new passages into the existing passages
-                    passages.extend(new_passages)
-                    save_data(passages)
-
-                    # encode corpus embedding for the whole passages
-                    new_corpus = append_new_corpus(model_mapping[ranker]["corpus"], model, new_passages, ranker)
-                    
-                    # update new model & corpus for this model_name
-                    model_mapping[ranker]["corpus"] = new_corpus
-                    model_mapping[ranker]["model"] = model
+                    # training model & extend the existing dataset & corpus embedding
+                    training(model_mapping, passages, ranker, dataset, new_passages, epochs=30)
 
     with st.form(key="search_form"):
         query = st.text_area('Bạn có thể test thử model bằng cách nhập câu hỏi vào ô bên dưới')
-        search_button = st.form_submit_button(label="Tìm kiếm")
+        
+        col1, col2 = st.columns([0.2, 0.8])
+        with col1:
+            search_button = st.form_submit_button(label="Tìm kiếm")
     
+        # with col2:
+            # TODO: retrain all existing passages with new model should be in Google Colab
+            # because it takes much time
+            # retrain_button = st.form_submit_button(label="Re-Training")
+
     # Check if the Search button was clicked
     if search_button:
         hits = []
@@ -149,20 +168,27 @@ def run(model_names, model_mapping, passages, top_k=10):
                     st.session_state.results[id] = Result(id, score, likes=0)
                 st.rerun()
 
+    # Check if re-train with likes info
+    # if retrain_button:
+    #     with st.spinner('Re-training with likes counter ......'):
+    #         # collect statistic of results
+    #         if query != "" and len(st.session_state.results) > 0:
+    #             new_training_data = []
+    #             for id, result in st.session_state.results.items():
+    #                 if result.likes != 0:
+    #                     label = result.score + result.likes * 0.1
+    #                     ans = f"{passages[result.id][1]}"
+    #                     new_training_data.append([query, ans, label])
+    #             print("new training data: ", new_training_data)
+
+    #             # training model with existing data but using updated scores
+    #             training(model_mapping, passages, ranker, new_training_data, new_passages=[], epochs=30)
+    
+    
     if query != "":
         # result area below Search button
         for id, result in st.session_state.results.items():
             render_result(result)
-
-        # collect statistic of results
-        if len(st.session_state.results) > 0:
-            new_training_data = []
-            for id, result in st.session_state.results.items():
-                if result.likes != 0:
-                    label = result.score + result.likes * 0.1
-                    ans = f"{passages[result.id][0]},{passages[result.id][1]}"
-                    new_training_data.append([query, ans, label])
-            print("new training data: ", new_training_data)
 
 if __name__ == '__main__':
     model_names = [
