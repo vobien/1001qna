@@ -42,15 +42,19 @@ class Result:
 
 # Function to render a result and handle likes/dislikes
 def render_result(result):
-    st.write(f"{passages[result.id][0]} - {passages[result.id][1]}")
-    st.write(f"Likes: {result.likes}")
+    with st.form(key=f"result_form_{result.id}"):
+        st.success(f"{passages[result.id][0]} - {passages[result.id][1]}")
+        st.write(f"Likes: {result.likes}")
 
-    col1, col2 = st.columns([0.1, 0.9])
+        col1, col2 = st.columns([0.1, 0.9])
 
-    # Create buttons for liking and disliking
-    like_btn = col1.button("Like", key=f"like-{result.id}")
-    dislike_btn = col2.button("Dislike", key=f"dislike-{result.id}")
-    
+        # Create buttons for liking and disliking
+        with col1:
+            like_btn = st.form_submit_button(label="Like")
+        
+        with col2:
+            dislike_btn = st.form_submit_button(label="Dislike")
+        
     if like_btn:
         likes = st.session_state.results[result.id].likes + 1
         st.session_state.results[result.id] = Result(result.id, result.score, likes)
